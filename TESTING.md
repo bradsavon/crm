@@ -463,11 +463,232 @@ Tests are automatically run in CI/CD pipelines. Ensure:
 - [Next.js Testing](https://nextjs.org/docs/testing)
 - [Testing Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
 
+## End-to-End (E2E) Testing
+
+### Overview
+
+E2E tests use Playwright to test the full application flow, including Next.js page components (`app/**/page.tsx`). These tests run in a real browser environment and test the complete user journey.
+
+### Tools
+
+- **Playwright**: Modern, fast, and reliable E2E testing framework
+- Supports multiple browsers (Chromium, Firefox, WebKit)
+- Built-in waiting and auto-retry mechanisms
+- Screenshot and video recording on failures
+
+### Setup
+
+E2E tests are located in the `e2e/` directory:
+
+```
+e2e/
+├── fixtures/              # Test helpers and setup
+│   ├── auth.setup.ts     # Authentication setup
+│   └── test-helpers.ts    # Reusable helper functions
+└── pages/                 # Page component tests
+    ├── login.spec.ts      # Login page tests
+    ├── dashboard.spec.ts  # Dashboard page tests
+    ├── contacts.spec.ts    # Contacts page tests
+    ├── tasks.spec.ts       # Tasks page tests
+    └── navigation.spec.ts # Navigation tests
+```
+
+### Running E2E Tests
+
+```bash
+# Run all E2E tests
+npm run test:e2e
+
+# Run E2E tests with UI mode (interactive)
+npm run test:e2e:ui
+
+# Run E2E tests in headed mode (see browser)
+npm run test:e2e:headed
+
+# Debug E2E tests
+npm run test:e2e:debug
+
+# View test report
+npm run test:e2e:report
+```
+
+### Configuration
+
+E2E tests are configured in `playwright.config.ts`:
+
+- **Base URL**: `http://localhost:3000` (or `BASE_URL` env variable)
+- **Test Directory**: `./e2e`
+- **Browsers**: Chromium (default), Firefox, WebKit
+- **Auto-start**: Dev server starts automatically before tests
+- **Retries**: 2 retries on CI, 0 locally
+- **Screenshots**: Captured on failure
+- **Traces**: Collected on first retry
+
+### Authentication Setup
+
+E2E tests use authenticated sessions stored in `e2e/.auth/user.json`. The setup script (`auth.setup.ts`) logs in once and saves the session for reuse.
+
+**Environment Variables:**
+- `TEST_USER_EMAIL`: Test user email (default: `admin@crm.com`)
+- `TEST_USER_PASSWORD`: Test user password (default: `admin123`)
+
+### Writing E2E Tests
+
+#### Basic Test Structure
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Page Name', () => {
+  // Use authenticated state
+  test.use({ storageState: 'e2e/.auth/user.json' });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/page-path');
+  });
+
+  test('should display page content', async ({ page }) => {
+    await expect(page.locator('text=Expected Content')).toBeVisible();
+  });
+});
+```
+
+#### Using Test Helpers
+
+```typescript
+import { loginUser, navigateToPage } from '../fixtures/test-helpers';
+
+test('should login and navigate', async ({ page }) => {
+  await loginUser(page, 'user@example.com', 'password');
+  await navigateToPage(page, '/contacts');
+  await expect(page).toHaveURL('/contacts');
+});
+```
+
+#### Waiting for API Responses
+
+```typescript
+test('should load data from API', async ({ page }) => {
+  // Wait for API call to complete
+  await page.waitForResponse((response) => 
+    response.url().includes('/api/contacts') && response.status() === 200
+  );
+
+  // Then check for rendered content
+  await expect(page.locator('table')).toBeVisible();
+});
+```
+
+### E2E Testing Patterns
+
+#### 1. Page Navigation
+
+```typescript
+test('should navigate to page', async ({ page }) => {
+  await page.click('text=Contacts');
+  await expect(page).toHaveURL('/contacts');
+});
+```
+
+#### 2. Form Submission
+
+```typescript
+test('should submit form', async ({ page }) => {
+  await page.fill('input[name="name"]', 'Test Name');
+  await page.fill('input[type="email"]', 'test@example.com');
+  await page.click('button[type="submit"]');
+  
+  // Wait for redirect or success message
+  await page.waitForURL('/success-page', { timeout: 10000 });
+});
+```
+
+#### 3. Authentication Flow
+
+```typescript
+test('should require authentication', async ({ page }) => {
+  // Try to access protected page without auth
+  await page.goto('/contacts');
+  
+  // Should redirect to login
+  await expect(page).toHaveURL('/login');
+});
+```
+
+#### 4. Responsive Design
+
+```typescript
+test('should be responsive on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  
+  // Check mobile-specific elements
+  const menuButton = page.locator('button[aria-label="Menu"]');
+  await expect(menuButton).toBeVisible();
+});
+```
+
+#### 5. Error Handling
+
+```typescript
+test('should display error messages', async ({ page }) => {
+  await page.fill('input[type="email"]', 'invalid@example.com');
+  await page.fill('input[type="password"]', 'wrong');
+  await page.click('button[type="submit"]');
+  
+  await expect(page.locator('text=/error|invalid/i')).toBeVisible();
+});
+```
+
+### Best Practices for E2E Tests
+
+1. **Use Authenticated State**: Reuse authenticated sessions for faster tests
+2. **Wait for Network Idle**: Use `waitForLoadState('networkidle')` after navigation
+3. **Wait for API Responses**: Wait for API calls before asserting content
+4. **Use Data Attributes**: Prefer `data-testid` over CSS selectors when possible
+5. **Test User Flows**: Focus on complete user journeys, not just individual pages
+6. **Keep Tests Independent**: Each test should be able to run standalone
+7. **Use Helpers**: Create reusable helper functions for common operations
+
+### Debugging E2E Tests
+
+1. **UI Mode**: Run `npm run test:e2e:ui` for interactive debugging
+2. **Headed Mode**: Run `npm run test:e2e:headed` to see the browser
+3. **Debug Mode**: Run `npm run test:e2e:debug` to step through tests
+4. **Screenshots**: Automatically captured on failure in `test-results/`
+5. **Traces**: Use `playwright show-trace` to view execution traces
+
+### CI/CD Integration
+
+For CI/CD pipelines:
+
+```yaml
+# Example GitHub Actions
+- name: Install Playwright
+  run: npx playwright install --with-deps chromium
+
+- name: Run E2E tests
+  run: npm run test:e2e
+  env:
+    BASE_URL: ${{ secrets.BASE_URL }}
+    TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+    TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+```
+
+### Coverage
+
+E2E tests complement unit tests by:
+- Testing complete user workflows
+- Verifying page rendering and navigation
+- Testing form submissions and data flow
+- Validating authentication and authorization
+- Checking responsive design
+- Testing browser compatibility
+
 ## Test Statistics
 
 As of the latest commit:
-- **Total Tests**: 298
-- **Test Suites**: 29
+- **Unit Tests**: 298 tests, 29 suites
+- **E2E Tests**: Multiple page component test suites
 - **Coverage**: Most files above 80% for statements, branches, and functions
 - **Status**: All tests passing ✅
 

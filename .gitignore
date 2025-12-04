@@ -7,6 +7,8 @@
 
 # testing
 /coverage
+/.auth
+e2e/.auth/user.json
 
 # next.js
 /.next/
@@ -35,7 +37,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# uploaded files
-/public/uploads/*
-!/public/uploads/.gitkeep
-
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
