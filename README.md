@@ -299,8 +299,10 @@ npm start
 ```
 
 ### Running Tests
+
+**Unit Tests:**
 ```bash
-# Run all tests
+# Run all unit tests
 npm test
 
 # Run tests in watch mode
@@ -309,6 +311,23 @@ npm run test:watch
 # Run tests with coverage report
 npm run test:coverage
 ```
+
+**End-to-End (E2E) Tests:**
+```bash
+# Run all E2E tests (requires dev server running)
+npm run test:e2e
+
+# Run E2E tests with UI mode (interactive)
+npm run test:e2e:ui
+
+# Run E2E tests in headed mode (see browser)
+npm run test:e2e:headed
+
+# Debug E2E tests
+npm run test:e2e:debug
+```
+
+See `TESTING.md` and `e2e/README.md` for detailed testing documentation.
 
 ### Environment Variables
 - `MONGODB_URI`: MongoDB connection string

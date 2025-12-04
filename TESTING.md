@@ -482,13 +482,13 @@ E2E tests are located in the `e2e/` directory:
 
 ```
 e2e/
-├── fixtures/              # Test helpers and setup
-│   ├── auth.setup.ts     # Authentication setup
+├── auth.setup.ts          # Authentication setup script
+├── fixtures/              # Test helpers
 │   └── test-helpers.ts    # Reusable helper functions
 └── pages/                 # Page component tests
     ├── login.spec.ts      # Login page tests
     ├── dashboard.spec.ts  # Dashboard page tests
-    ├── contacts.spec.ts    # Contacts page tests
+    ├── contacts.spec.ts   # Contacts page tests
     ├── tasks.spec.ts       # Tasks page tests
     └── navigation.spec.ts # Navigation tests
 ```
@@ -526,7 +526,7 @@ E2E tests are configured in `playwright.config.ts`:
 
 ### Authentication Setup
 
-E2E tests use authenticated sessions stored in `e2e/.auth/user.json`. The setup script (`auth.setup.ts`) logs in once and saves the session for reuse.
+E2E tests use authenticated sessions stored in `.auth/user.json`. The setup script (`e2e/auth.setup.ts`) logs in once and saves the session for reuse. The setup project in `playwright.config.ts` automatically runs this before other tests.
 
 **Environment Variables:**
 - `TEST_USER_EMAIL`: Test user email (default: `admin@crm.com`)
@@ -540,8 +540,8 @@ E2E tests use authenticated sessions stored in `e2e/.auth/user.json`. The setup 
 import { test, expect } from '@playwright/test';
 
 test.describe('Page Name', () => {
-  // Use authenticated state
-  test.use({ storageState: 'e2e/.auth/user.json' });
+  // Use authenticated state (automatically set by setup project)
+  test.use({ storageState: '.auth/user.json' });
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/page-path');
@@ -564,6 +564,8 @@ test('should login and navigate', async ({ page }) => {
   await expect(page).toHaveURL('/contacts');
 });
 ```
+
+**Note**: Most tests use the authenticated state from the setup project, so manual login is typically not needed.
 
 #### Waiting for API Responses
 
@@ -688,9 +690,19 @@ E2E tests complement unit tests by:
 
 As of the latest commit:
 - **Unit Tests**: 298 tests, 29 suites
-- **E2E Tests**: Multiple page component test suites
+- **E2E Tests**: Multiple page component test suites covering login, dashboard, contacts, tasks, and navigation
 - **Coverage**: Most files above 80% for statements, branches, and functions
-- **Status**: All tests passing ✅
+- **Status**: 
+  - Unit tests: All passing ✅
+  - E2E tests: Most passing, with some tests skipped for form submission flows that require additional debugging
+
+### Skipped E2E Tests
+
+The following E2E tests are currently skipped and may be re-enabled after resolving form submission timing issues:
+- `New Contact Page > should create a new contact`
+- `New Task Page > should create a new task`
+
+These tests are skipped using `test.skip()` and can be re-enabled when the underlying form submission and navigation timing issues are resolved.
 
 ---
 

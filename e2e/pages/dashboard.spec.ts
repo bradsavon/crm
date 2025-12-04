@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Dashboard Page', () => {
-  test.use({ storageState: 'e2e/.auth/user.json' });
+  test.use({ storageState: '.auth/user.json' });
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -13,13 +13,19 @@ test.describe('Dashboard Page', () => {
       response.url().includes('/api/stats') && response.status() === 200
     );
 
-    // Check for stat cards
-    await expect(page.locator('text=/contacts|companies|cases/i')).toBeVisible();
+    // Wait for page to be fully loaded
+    await page.waitForLoadState('networkidle');
+    
+    // Check for stat cards - look for specific stat labels (they're in <p> tags)
+    await expect(page.locator('p:has-text("Total Contacts")')).toBeVisible({ timeout: 5000 });
   });
 
   test('should display quick action links', async ({ page }) => {
-    // Check for quick action buttons/links
-    await expect(page.locator('text=/New Contact|New Company|New Case/i').first()).toBeVisible();
+    // Wait for page to load
+    await page.waitForLoadState('networkidle');
+    
+    // Check for quick action buttons/links - they're Link components with specific text
+    await expect(page.locator('a:has-text("Add Contact"), a:has-text("Add Company"), a:has-text("Add Case")').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('should display My Tasks widget', async ({ page }) => {
@@ -28,28 +34,54 @@ test.describe('Dashboard Page', () => {
       response.url().includes('/api/tasks/my') && response.status() === 200
     );
 
-    // Check for tasks section
-    await expect(page.locator('text=/My Tasks|Tasks/i')).toBeVisible();
+    // Check for tasks section - look for "My Tasks" heading
+    await expect(page.locator('h2:has-text("My Tasks")')).toBeVisible();
   });
 
   test('should navigate to contacts page', async ({ page }) => {
-    await page.click('text=Contacts');
-    await expect(page).toHaveURL('/contacts');
+    // Wait for navigation to be ready
+    await page.waitForLoadState('networkidle');
+    
+    // Use nav link selector to avoid clicking on other "Contacts" text
+    // Wait for the link to be visible and clickable
+    const contactsLink = page.locator('nav a:has-text("Contacts")');
+    await expect(contactsLink).toBeVisible();
+    
+    // Click and wait for navigation
+    await Promise.all([
+      page.waitForURL('/contacts', { timeout: 5000 }),
+      contactsLink.click()
+    ]);
   });
 
   test('should navigate to companies page', async ({ page }) => {
-    await page.click('text=Companies');
-    await expect(page).toHaveURL('/companies');
+    await page.waitForLoadState('networkidle');
+    const companiesLink = page.locator('nav a:has-text("Companies")');
+    await expect(companiesLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/companies', { timeout: 5000 }),
+      companiesLink.click()
+    ]);
   });
 
   test('should navigate to cases page', async ({ page }) => {
-    await page.click('text=Cases');
-    await expect(page).toHaveURL('/cases');
+    await page.waitForLoadState('networkidle');
+    const casesLink = page.locator('nav a:has-text("Cases")');
+    await expect(casesLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/cases', { timeout: 5000 }),
+      casesLink.click()
+    ]);
   });
 
   test('should navigate to tasks page', async ({ page }) => {
-    await page.click('text=Tasks');
-    await expect(page).toHaveURL('/tasks');
+    await page.waitForLoadState('networkidle');
+    const tasksLink = page.locator('nav a:has-text("Tasks")');
+    await expect(tasksLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/tasks', { timeout: 5000 }),
+      tasksLink.click()
+    ]);
   });
 
   test('should display navigation bar', async ({ page }) => {

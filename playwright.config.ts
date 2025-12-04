@@ -27,19 +27,30 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // Setup project - runs authentication setup
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        storageState: '.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
 
     // Uncomment to test on other browsers
     // {
     //   name: 'firefox',
     //   use: { ...devices['Desktop Firefox'] },
+    //   dependencies: ['setup'],
     // },
     // {
     //   name: 'webkit',
     //   use: { ...devices['Desktop Safari'] },
+    //   dependencies: ['setup'],
     // },
   ],
 

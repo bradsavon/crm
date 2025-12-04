@@ -42,11 +42,14 @@ test.describe('Login Page', () => {
   });
 
   test('should navigate to login from other pages when not authenticated', async ({ page }) => {
+    // Clear any existing auth state
+    await page.context().clearCookies();
+    
     // Try to access protected page
     await page.goto('/contacts');
 
     // Should redirect to login
-    await expect(page).toHaveURL('/login');
+    await expect(page).toHaveURL('/login', { timeout: 5000 });
   });
 });
 

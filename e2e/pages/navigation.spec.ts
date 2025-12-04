@@ -1,51 +1,90 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Navigation', () => {
-  test.use({ storageState: 'e2e/.auth/user.json' });
+  test.use({ storageState: '.auth/user.json' });
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });
 
   test('should display all navigation links', async ({ page }) => {
-    await expect(page.locator('text=Dashboard')).toBeVisible();
-    await expect(page.locator('text=Contacts')).toBeVisible();
-    await expect(page.locator('text=Companies')).toBeVisible();
-    await expect(page.locator('text=Cases')).toBeVisible();
-    await expect(page.locator('text=Tasks')).toBeVisible();
-    await expect(page.locator('text=Calendar')).toBeVisible();
-    await expect(page.locator('text=Documents')).toBeVisible();
+    // Wait for navigation to load
+    await page.waitForLoadState('networkidle');
+    
+    // Check for navigation links specifically (not just any text on the page)
+    await expect(page.locator('nav a:has-text("Dashboard")')).toBeVisible();
+    await expect(page.locator('nav a:has-text("Contacts")')).toBeVisible();
+    await expect(page.locator('nav a:has-text("Companies")')).toBeVisible();
+    await expect(page.locator('nav a:has-text("Cases")')).toBeVisible();
+    await expect(page.locator('nav a:has-text("Tasks")')).toBeVisible();
+    await expect(page.locator('nav a:has-text("Calendar")')).toBeVisible();
+    await expect(page.locator('nav a:has-text("Documents")')).toBeVisible();
   });
 
   test('should navigate between pages', async ({ page }) => {
+    // Wait for page to be ready
+    await page.waitForLoadState('networkidle');
+    
     // Test navigation to different pages
-    await page.click('text=Contacts');
-    await expect(page).toHaveURL('/contacts');
+    // Start from home page
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    const contactsLink = page.locator('nav a:has-text("Contacts")');
+    await expect(contactsLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/contacts', { timeout: 10000 }),
+      contactsLink.click()
+    ]);
 
-    await page.click('text=Companies');
-    await expect(page).toHaveURL('/companies');
+    const companiesLink = page.locator('nav a:has-text("Companies")');
+    await expect(companiesLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/companies', { timeout: 10000 }),
+      companiesLink.click()
+    ]);
 
-    await page.click('text=Cases');
-    await expect(page).toHaveURL('/cases');
+    const casesLink = page.locator('nav a:has-text("Cases")');
+    await expect(casesLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/cases', { timeout: 10000 }),
+      casesLink.click()
+    ]);
 
-    await page.click('text=Tasks');
-    await expect(page).toHaveURL('/tasks');
+    const tasksLink = page.locator('nav a:has-text("Tasks")');
+    await expect(tasksLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/tasks', { timeout: 10000 }),
+      tasksLink.click()
+    ]);
 
-    await page.click('text=Calendar');
-    await expect(page).toHaveURL('/calendar');
+    const calendarLink = page.locator('nav a:has-text("Calendar")');
+    await expect(calendarLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/calendar', { timeout: 10000 }),
+      calendarLink.click()
+    ]);
 
-    await page.click('text=Documents');
-    await expect(page).toHaveURL('/documents');
+    const documentsLink = page.locator('nav a:has-text("Documents")');
+    await expect(documentsLink).toBeVisible();
+    await Promise.all([
+      page.waitForURL('/documents', { timeout: 10000 }),
+      documentsLink.click()
+    ]);
   });
 
   test('should display user menu when logged in', async ({ page }) => {
     // Should show user info or logout button
-    await expect(page.locator('text=Logout, button:has-text("Logout")')).toBeVisible();
+    await expect(page.locator('button:has-text("Logout")')).toBeVisible();
   });
 
   test('should allow logout', async ({ page }) => {
-    await page.click('text=Logout');
-    await expect(page).toHaveURL('/login');
+    // Wait for page to load
+    await page.waitForLoadState('networkidle');
+    
+    // Click logout button specifically
+    await page.locator('button:has-text("Logout")').click();
+    await expect(page).toHaveURL('/login', { timeout: 10000 });
   });
 
   test('should have search functionality', async ({ page }) => {
@@ -60,14 +99,36 @@ test.describe('Navigation', () => {
   test('should be responsive on mobile', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
+    
+    // Reload page to trigger mobile layout
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for page to adjust to mobile layout
+    await page.waitForTimeout(500);
 
-    // Check for mobile menu button
-    const menuButton = page.locator('button[aria-label="Menu"], button:has-text("Menu")');
-    if (await menuButton.count() > 0) {
-      await menuButton.click();
-      // Mobile menu should be visible
-      await expect(page.locator('text=Dashboard')).toBeVisible();
-    }
+    // Check for mobile menu button - it should be visible in mobile view
+    // The button is in the lg:hidden section (visible on mobile, hidden on desktop)
+    const menuButton = page.locator('button[aria-label="Menu"]');
+    await expect(menuButton).toBeVisible({ timeout: 5000 });
+    
+    // Verify desktop nav is hidden (it has class "hidden lg:flex")
+    const desktopNav = page.locator('.hidden.lg\\:flex');
+    const isDesktopNavHidden = await desktopNav.isVisible().catch(() => false);
+    expect(isDesktopNavHidden).toBe(false); // Desktop nav should be hidden on mobile
+    
+    // Click menu button to open mobile menu
+    await menuButton.click();
+    
+    // Wait for mobile menu to open (it's conditionally rendered based on mobileMenuOpen state)
+    // The mobile menu is in a div that appears when mobileMenuOpen is true
+    // Look for the mobile menu container div
+    await page.waitForSelector('nav .pb-4.border-t', { timeout: 5000 });
+    
+    // Mobile menu should be visible - check for navigation links in the mobile menu
+    // The mobile menu shows links when open, check for Dashboard link specifically in mobile menu
+    const mobileNavLink = page.locator('nav .pb-4.border-t a:has-text("Dashboard")');
+    await expect(mobileNavLink).toBeVisible({ timeout: 5000 });
   });
 });
 
