@@ -1,0 +1,477 @@
+# Testing Documentation
+
+## Overview
+
+This document describes the testing approach, tools, and best practices for the CRM Next.js application. The project uses a comprehensive testing strategy to ensure code quality, reliability, and maintainability.
+
+## Testing Philosophy
+
+Our testing approach follows these principles:
+
+1. **Comprehensive Coverage**: Aim for at least 80% coverage for statements, branches, and functions
+2. **Test-Driven Development**: Write tests alongside or before implementation
+3. **Isolation**: Each test should be independent and not rely on other tests
+4. **Realistic Mocks**: Use mocks that closely simulate real behavior
+5. **Clear Assertions**: Tests should clearly express what they're verifying
+
+## Testing Tools and Frameworks
+
+### Core Testing Framework
+
+- **Jest**: JavaScript testing framework with built-in test runner, assertion library, and mocking capabilities
+- **React Testing Library**: Simple and complete testing utilities for React components
+- **@testing-library/jest-dom**: Custom Jest matchers for DOM elements
+- **@testing-library/user-event**: Simulates user interactions
+
+### Configuration Files
+
+- `jest.config.js`: Jest configuration with Next.js support
+- `jest.setup.js`: Global test setup, mocks, and polyfills
+
+## Test Structure
+
+### Directory Organization
+
+```
+__tests__/
+├── api/                    # API route tests
+│   ├── auth/              # Authentication endpoints
+│   ├── cases/             # Case management endpoints
+│   ├── companies/         # Company endpoints
+│   ├── contacts/          # Contact endpoints
+│   ├── documents/         # Document endpoints
+│   ├── meetings/          # Meeting endpoints
+│   ├── tasks/             # Task endpoints
+│   └── users/             # User management endpoints
+├── components/            # React component tests
+├── lib/                   # Utility function tests
+├── models/                # Mongoose model tests
+└── utils/                 # Test helper utilities
+    └── test-helpers.ts    # Shared test utilities
+```
+
+### Naming Conventions
+
+- Test files: `*.test.ts` or `*.test.tsx`
+- Test suites: Use descriptive `describe` blocks
+- Test cases: Use clear `it` or `test` statements that describe the expected behavior
+
+Example:
+```typescript
+describe('GET /api/contacts/[id]', () => {
+  it('should return contact by id', async () => {
+    // test implementation
+  });
+});
+```
+
+## Running Tests
+
+### Basic Commands
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run a specific test file
+npm test -- __tests__/components/Navigation.test.tsx
+
+# Run tests matching a pattern
+npm test -- Navigation
+```
+
+### Coverage Reports
+
+Coverage reports are generated in the `coverage/` directory. The project aims for:
+- **Statements**: ≥ 80%
+- **Branches**: ≥ 80%
+- **Functions**: ≥ 80%
+- **Lines**: ≥ 80%
+
+View coverage report:
+```bash
+npm run test:coverage
+# Open coverage/lcov-report/index.html in a browser
+```
+
+## Testing API Routes
+
+### Setup and Mocking
+
+API route tests use the following mocking strategy:
+
+1. **MongoDB Connection**: Mocked to avoid actual database connections
+2. **Mongoose Models**: Mocked with Jest to control behavior
+3. **Authentication**: Mock `getCurrentUser` and `hasPermission` functions
+4. **Next.js APIs**: Mock `NextRequest`, `NextResponse`, and `cookies`
+
+### Example API Route Test
+
+```typescript
+// Mock dependencies BEFORE imports
+jest.mock('@/lib/mongodb', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('@/models/Contact', () => ({
+  __esModule: true,
+  default: {
+    findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+    findByIdAndDelete: jest.fn(),
+  },
+}));
+
+import { GET, PUT, DELETE } from '@/app/api/contacts/[id]/route';
+import Contact from '@/models/Contact';
+import { createMockRequest } from '../../utils/test-helpers';
+
+describe('GET /api/contacts/[id]', () => {
+  it('should return contact by id', async () => {
+    const mockContact = {
+      _id: 'contact-id',
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+
+    (Contact.findById as jest.Mock).mockResolvedValue(mockContact);
+
+    const request = createMockRequest('GET');
+    const response = await GET(request, { params: { id: 'contact-id' } });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.firstName).toBe('John');
+  });
+});
+```
+
+### Testing Patterns
+
+1. **Happy Path**: Test successful operations
+2. **Error Handling**: Test error cases (404, 400, 401, 403)
+3. **Validation**: Test input validation
+4. **Permissions**: Test role-based access control
+5. **Edge Cases**: Test boundary conditions
+
+## Testing React Components
+
+### Setup
+
+Component tests use React Testing Library with the following setup:
+
+```typescript
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import Component from '@/components/Component';
+
+// Mock Next.js hooks
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+  usePathname: jest.fn(),
+  useSearchParams: jest.fn(),
+}));
+```
+
+### Component Testing Patterns
+
+1. **Rendering**: Test that components render correctly
+2. **User Interactions**: Test clicks, form submissions, etc.
+3. **State Changes**: Test component state updates
+4. **Props**: Test component behavior with different props
+5. **Async Operations**: Use `waitFor` for async updates
+
+### Example Component Test
+
+```typescript
+describe('Navigation Component', () => {
+  it('should render navigation items', () => {
+    render(<Navigation />);
+    
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Contacts')).toBeInTheDocument();
+  });
+
+  it('should handle search submission', async () => {
+    const mockPush = jest.fn();
+    (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
+
+    render(<Navigation />);
+    
+    const searchInput = screen.getByPlaceholderText(/search/i);
+    fireEvent.change(searchInput, { target: { value: 'test query' } });
+    fireEvent.submit(searchInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/search?q=test%20query');
+    });
+  });
+});
+```
+
+### Handling Async Operations
+
+When testing async operations, use `waitFor` and `act`:
+
+```typescript
+it('should load data asynchronously', async () => {
+  render(<Component />);
+
+  await waitFor(() => {
+    expect(screen.getByText('Loaded Data')).toBeInTheDocument();
+  });
+});
+
+it('should handle state updates', async () => {
+  render(<Component />);
+
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button'));
+  });
+
+  expect(screen.getByText('Updated')).toBeInTheDocument();
+});
+```
+
+## Testing Utilities
+
+### Test Helpers
+
+The `__tests__/utils/test-helpers.ts` file provides reusable utilities:
+
+- `createMockRequest()`: Creates a mock `NextRequest` for API route tests
+- `createMockUser()`: Creates a mock user object
+- `createMockAuthCookie()`: Creates a mock authentication cookie
+
+### Example Usage
+
+```typescript
+import { createMockRequest, createMockUser } from '../utils/test-helpers';
+
+const request = createMockRequest('POST', { name: 'Test' });
+const user = createMockUser({ role: 'admin' });
+```
+
+## Mocking Strategies
+
+### Next.js APIs
+
+```typescript
+// Mock Next.js router
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+// Mock Next.js cookies
+jest.mock('next/headers', () => ({
+  cookies: jest.fn(() => ({
+    get: jest.fn(),
+    set: jest.fn(),
+  })),
+}));
+```
+
+### Mongoose Models
+
+```typescript
+jest.mock('@/models/Contact', () => ({
+  __esModule: true,
+  default: {
+    find: jest.fn().mockReturnValue({
+      populate: jest.fn().mockReturnValue({
+        sort: jest.fn().mockResolvedValue([]),
+      }),
+    }),
+    findById: jest.fn(),
+    create: jest.fn(),
+  },
+}));
+```
+
+### Fetch API
+
+```typescript
+global.fetch = jest.fn();
+
+(global.fetch as jest.Mock).mockResolvedValue({
+  ok: true,
+  json: async () => ({ success: true, data: {} }),
+});
+```
+
+## Coverage Requirements
+
+### Minimum Coverage Thresholds
+
+- **Statements**: 80%
+- **Branches**: 80%
+- **Functions**: 80%
+- **Lines**: 80%
+
+### Files Excluded from Coverage
+
+- Next.js page components (`app/**/page.tsx`) - Tested via E2E
+- Configuration files
+- Type definitions
+
+### Checking Coverage
+
+```bash
+# Generate coverage report
+npm run test:coverage
+
+# Check specific file coverage
+npm test -- --coverage --collectCoverageFrom='app/api/contacts/route.ts'
+```
+
+## Best Practices
+
+### 1. Test Organization
+
+- Group related tests in `describe` blocks
+- Use descriptive test names that explain what is being tested
+- Follow the Arrange-Act-Assert pattern
+
+### 2. Test Independence
+
+- Each test should be able to run independently
+- Use `beforeEach` to set up fresh state
+- Clean up mocks with `jest.clearAllMocks()`
+
+### 3. Mock Management
+
+- Mock at the module level, not inside tests
+- Use realistic mock data
+- Reset mocks between tests
+
+### 4. Async Testing
+
+- Always use `await` for async operations
+- Use `waitFor` for DOM updates
+- Wrap state updates in `act()` when needed
+
+### 5. Assertions
+
+- Use specific matchers (`toBe`, `toEqual`, `toContain`)
+- Test both positive and negative cases
+- Verify error messages and status codes
+
+### 6. Test Data
+
+- Use factories or helpers for creating test data
+- Keep test data minimal and focused
+- Use meaningful values that reflect real usage
+
+## Common Patterns
+
+### Testing Error Handling
+
+```typescript
+it('should handle errors gracefully', async () => {
+  (Model.findById as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+  const request = createMockRequest('GET');
+  const response = await GET(request, { params: { id: 'id' } });
+  const data = await response.json();
+
+  expect(response.status).toBe(400);
+  expect(data.success).toBe(false);
+  expect(data.error).toBe('Database error');
+});
+```
+
+### Testing Permissions
+
+```typescript
+it('should return 403 for unauthorized access', async () => {
+  const user = createMockUser({ role: 'salesrep' });
+  (getCurrentUser as jest.Mock).mockResolvedValue(user);
+  (hasPermission as jest.Mock).mockReturnValue(false);
+
+  const request = createMockRequest('GET');
+  const response = await GET(request, { params: { id: 'id' } });
+  const data = await response.json();
+
+  expect(response.status).toBe(403);
+  expect(data.error).toBe('Insufficient permissions');
+});
+```
+
+### Testing Form Submissions
+
+```typescript
+it('should submit form with valid data', async () => {
+  render(<FormComponent />);
+
+  fireEvent.change(screen.getByLabelText('Name'), {
+    target: { value: 'Test Name' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+  await waitFor(() => {
+    expect(mockSubmit).toHaveBeenCalledWith({ name: 'Test Name' });
+  });
+});
+```
+
+## Continuous Integration
+
+Tests are automatically run in CI/CD pipelines. Ensure:
+
+1. All tests pass before merging
+2. Coverage thresholds are met
+3. No console errors or warnings in tests
+4. Tests complete in reasonable time
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"An update was not wrapped in act(...)"**
+   - Wrap state updates in `act()` calls
+   - Use `waitFor` for async updates
+
+2. **"Cannot find module"**
+   - Check module path aliases in `jest.config.js`
+   - Verify imports use `@/` prefix
+
+3. **"Mock function not called"**
+   - Ensure mocks are set up before imports
+   - Check that mocks are reset between tests
+
+4. **"Timeout errors"**
+   - Increase timeout for slow operations
+   - Use `waitFor` with custom timeout
+
+## Resources
+
+- [Jest Documentation](https://jestjs.io/docs/getting-started)
+- [React Testing Library](https://testing-library.com/react)
+- [Next.js Testing](https://nextjs.org/docs/testing)
+- [Testing Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
+
+## Test Statistics
+
+As of the latest commit:
+- **Total Tests**: 298
+- **Test Suites**: 29
+- **Coverage**: Most files above 80% for statements, branches, and functions
+- **Status**: All tests passing ✅
+
+---
+
+*Last updated: [Current Date]*
+
