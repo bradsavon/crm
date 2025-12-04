@@ -3,7 +3,7 @@ import connectDB from '@/lib/mongodb';
 
 interface CreateActivityParams {
   type: ActivityType;
-  entityType: 'contact' | 'company' | 'deal' | 'user';
+  entityType: 'contact' | 'company' | 'case' | 'user';
   entityId: string;
   userId: string;
   userName: string;

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 
 interface FileUploadProps {
-  relatedEntityType: 'contact' | 'company' | 'deal';
+  relatedEntityType: 'contact' | 'company' | 'case';
   relatedEntityId: string;
   onUploadSuccess?: () => void;
   category?: string;
