@@ -52,6 +52,45 @@ A modern, full-featured Customer Relationship Management (CRM) system built with
 - **Card Views**: Mobile-friendly card layouts for lists
 - **Real-time Updates**: Dynamic updates without page refreshes
 
+## Screenshots
+
+### Dashboard
+![Dashboard](./docs/screenshots/dashboard.png)
+*Overview of key metrics, pipeline value, and recent activity*
+
+### Contacts Management
+![Contacts List](./docs/screenshots/contacts-list.png)
+*View and manage all contacts with search and filtering*
+
+![Contact Detail](./docs/screenshots/contact-detail.png)
+*Detailed contact information with documents and activity history*
+
+### Cases Pipeline
+![Cases List](./docs/screenshots/cases-list.png)
+*Track cases through different stages*
+
+![Case Detail](./docs/screenshots/case-detail.png)
+*Case information with stage tracking and related documents*
+
+### Calendar & Meetings
+![Calendar View](./docs/screenshots/calendar.png)
+*Full calendar integration with month, week, and day views*
+
+![Meeting Detail](./docs/screenshots/meeting-detail.png)
+*Schedule and manage meetings with attendees and reminders*
+
+### Tasks Management
+![Tasks List](./docs/screenshots/tasks-list.png)
+*Create, assign, and track tasks with priorities and due dates*
+
+### Documents Library
+![Documents](./docs/screenshots/documents.png)
+*Central document library with filtering and preview*
+
+### User Management
+![Users List](./docs/screenshots/users-list.png)
+*Manage users with role-based access control*
+
 ## Getting Started
 
 ### Prerequisites
